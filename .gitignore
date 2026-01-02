@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.env
+.env.local
+venv/
+env/
+.venv
+*.log
+.DS_Store
+.vercel
+node_modules/

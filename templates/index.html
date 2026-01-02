@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Analyzer - AI Notes Generator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #FF0000;
+            --primary-dark: #CC0000;
+            --secondary: #065FD4;
+            --bg-dark: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --bg-input: #272727;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --border: #3a3a3a;
+            --success: #2ecc71;
+            --gradient: linear-gradient(135deg, #FF0000, #FF6B6B);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-card);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .logo i {
+            color: var(--primary);
+            font-size: 2rem;
+        }
+
+        .logo span {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Input Section */
+        .input-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .input-section h2 {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-section h2 i {
+            color: var(--primary);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .input-field {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: var(--bg-input);
+            border-radius: 50px;
+            padding: 0.5rem 1.5rem;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+        }
+
+        .input-field i {
+            color: var(--text-secondary);
+            margin-right: 0.75rem;
+        }
+
+        .input-field input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .input-field input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .analyze-btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 0, 0, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading State */
+        .loading {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            text-align: center;
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading p {
+            margin-top: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 2rem;
+        }
+
+        /* Video Preview */
+        .video-preview {
+            background: var(--bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            position: sticky;
+            top: 2rem;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+        }
+
+        .video-thumbnail iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .video-info {
+            padding: 1rem;
+        }
+
+        .video-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .stat i {
+            color: var(--primary);
+        }
+
+        /* Notes Section */
+        .notes-container {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .notes-header {
+            background: var(--bg-input);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notes-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notes-header h3 i {
+            color: var(--success);
+        }
+
+        .notes-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--border);
+        }
+
+        .notes-content {
+            padding: 2rem;
+            line-height: 1.8;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        /* Markdown Styling */
+        .notes-content h1 {
+            color: var(--primary);
+            margin: 1.5rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .notes-content h2 {
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.75rem;
+            font-size: 1.25rem;
+        }
+
+        .notes-content h3 {
+            color: var(--text-secondary);
+            margin: 1rem 0 0.5rem;
+        }
+
+        .notes-content p {
+            margin: 0.75rem 0;
+        }
+
+        .notes-content ul, .notes-content ol {
+            margin: 0.75rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .notes-content li {
+            margin: 0.5rem 0;
+        }
+
+        .notes-content strong {
+            color: var(--primary);
+        }
+
+        .notes-content code {
+            background: var(--bg-input);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .notes-content blockquote {
+            border-left: 4px solid var(--primary);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* Error Message */
+        .error-message {
+            display: none;
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .error-message.active {
+            display: flex;
+        }
+
+        /* History Section */
+        .history-section {
+            margin-top: 2rem;
+        }
+
+        .history-section h3 {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .history-section h3 i {
+            color: var(--secondary);
+        }
+
+        .history-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .history-item {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .history-thumb {
+            width: 120px;
+            height: 68px;
+            border-radius: 8px;
+            background: var(--bg-input);
+            overflow: hidden;
+        }
+
+        .history-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .history-info {
+            flex: 1;
+        }
+
+        .history-info h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .history-info p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .video-preview {
+                position: static;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .input-wrapper {
+                flex-direction: column;
+            }
+
+            .analyze-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--success);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <i class="fab fa-youtube"></i>
+            <span>VideoNotes AI</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Input Section -->
+        <section class="input-section">
+            <h2><i class="fas fa-link"></i> Analyze YouTube Video</h2>
+            <p style="color: var(--text-secondary);">Paste a YouTube video URL to generate AI-powered notes from its transcript</p>
+            
+            <div class="input-wrapper">
+                <div class="input-field">
+                    <i class="fab fa-youtube"></i>
+                    <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+                </div>
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeVideo()">
+                    <i class="fas fa-magic"></i>
+                    Generate Notes
+                </button>
+            </div>
+
+            <div class="error-message" id="errorMessage">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorText"></span>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing video transcript with AI...</p>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem;">This may take a moment</p>
+        </div>
+
+        <!-- Results Section -->
+        <section class="results-section" id="results">
+            <div class="results-grid">
+                <!-- Video Preview -->
+                <div class="video-preview">
+                    <div class="video-thumbnail">
+                        <iframe id="videoFrame" src="" allowfullscreen></iframe>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-stats">
+                            <div class="stat">
+                                <i class="fas fa-file-alt"></i>
+                                <span id="transcriptLength">0</span> characters transcript
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Container -->
+                <div class="notes-container">
+                    <div class="notes-header">
+                        <h3><i class="fas fa-check-circle"></i> Generated Notes</h3>
+                        <div class="notes-actions">
+                            <button class="action-btn" onclick="copyNotes()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="action-btn" onclick="downloadNotes()">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                    <div class="notes-content" id="notesContent">
+                        <!-- Notes will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section class="history-section" id="historySection" style="display: none;">
+            <h3><i class="fas fa-history"></i> Recent Analyses</h3>
+            <div class="history-list" id="historyList">
+                <!-- History items will be added here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check"></i>
+        <span id="toastText">Copied to clipboard!</span>
+    </div>
+
+    <script>
+        let currentNotes = '';
+        let currentVideoId = '';
+
+        // Load history on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+        });
+
+        // Enter key support
+        document.getElementById('videoUrl').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeVideo();
+            }
+        });
+
+        async function analyzeVideo() {
+            const url = document.getElementById('videoUrl').value.trim();
+            
+            if (!url) {
+                showError('Please enter a YouTube video URL');
+                return;
+            }
+
+            // Reset UI
+            hideError();
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('analyzeBtn').disabled = true;
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                // Store results
+                currentNotes = data.notes;
+                currentVideoId = data.video_id;
+
+                // Update UI
+                document.getElementById('videoFrame').src = `https://www.youtube.com/embed/${data.video_id}`;
+                document.getElementById('transcriptLength').textContent = data.transcript_length.toLocaleString();
+                document.getElementById('notesContent').innerHTML = marked.parse(data.notes);
+
+                // Show results
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('results').classList.add('active');
+
+                // Save to history
+                saveToHistory(data.video_id, url);
+
+            } catch (error) {
+                document.getElementById('loading').classList.remove('active');
+                showError(error.message);
+            } finally {
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('errorMessage').classList.add('active');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('active');
+        }
+
+        function copyNotes() {
+            navigator.clipboard.writeText(currentNotes).then(() => {
+                showToast('Notes copied to clipboard!');
+            });
+        }
+
+        function downloadNotes() {
+            const blob = new Blob([currentNotes], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `youtube-notes-${currentVideoId}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Notes downloaded!');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastText').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function saveToHistory(videoId, url) {
+            let history = JSON.parse(localStorage.getItem('videoHistory') || '[]');
+            
+            // Remove if already exists
+            history = history.filter(item => item.videoId !== videoId);
+            
+            // Add to beginning
+            history.unshift({
+                videoId: videoId,
+                url: url,
+                timestamp: new Date().toISOString()
+            });
+
+            // Keep only last 10
+            history = history.slice(0, 10);
+            
+            localStorage.setItem('videoHistory', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('videoHistory') || '[]');
+            const historySection = document.getElementById('historySection');
+            const historyList = document.getElementById('historyList');
+
+            if (history.length === 0) {
+                historySection.style.display = 'none';
+                return;
+            }
+
+            historySection.style.display = 'block';
+            historyList.innerHTML = history.map(item => `
+                <div class="history-item" onclick="loadFromHistory('${item.url}')">
+                    <div class="history-thumb">
+                        <img src="https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg" alt="Thumbnail">
+                    </div>
+                    <div class="history-info">
+                        <h4>Video: ${item.videoId}</h4>
+                        <p>${new Date(item.timestamp).toLocaleDateString()} ${new Date(item.timestamp).toLocaleTimeString()}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadFromHistory(url) {
+            document.getElementById('videoUrl').value = url;
+            analyzeVideo();
+        }
+    </script>
+</body>
+</html>
