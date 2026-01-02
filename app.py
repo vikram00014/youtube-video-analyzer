@@ -13,15 +13,22 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 def extract_video_id(url):
     """Extract YouTube video ID from various URL formats"""
+    # Remove extra parameters first
+    url = url.split('&')[0]  # Remove &list=, &index=, etc.
+    
     patterns = [
-        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
-        r'(?:embed\/)([0-9A-Za-z_-]{11})',
-        r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})',
+        r'(?:v=|/)([0-9A-Za-z_-]{11}).*',
+        r'(?:embed/)([0-9A-Za-z_-]{11})',
+        r'(?:youtu\.be/)([0-9A-Za-z_-]{11})',
+        r'(?:watch\?v=)([0-9A-Za-z_-]{11})',
     ]
     for pattern in patterns:
         match = re.search(pattern, url)
         if match:
-            return match.group(1)
+            video_id = match.group(1)
+            # Clean up any remaining query parameters
+            video_id = video_id.split('?')[0].split('&')[0]
+            return video_id
     return None
 
 def get_transcript(video_id):
