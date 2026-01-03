@@ -8,7 +8,9 @@ import os
 app = Flask(__name__)
 
 # Initialize Gemini client - Use environment variable for security
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyDWJW68z4wgOy8gb0gmSbDkKlDaYDCfZ5g')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable is not set")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 def extract_video_id(url):
